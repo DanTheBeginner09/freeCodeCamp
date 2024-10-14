@@ -7,6 +7,7 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import type { Dispatch } from 'redux';
 import { createSelector } from 'reselect';
+import { useLocation } from '@reach/router';
 import { Container, Col, Row, Button, Quiz, useQuiz } from '@freecodecamp/ui';
 
 // Local Utilities
@@ -28,6 +29,7 @@ import {
 } from '../redux/actions';
 import { isChallengeCompletedSelector } from '../redux/selectors';
 import PrismFormatted from '../components/prism-formatted';
+import { usePageLeave } from '../hooks';
 import ExitQuizModal from './exit-quiz-modal';
 import FinishQuizModal from './finish-quiz-modal';
 
@@ -103,6 +105,8 @@ const ShowQuiz = ({
   closeFinishQuizModal
 }: ShowQuizProps) => {
   const { t } = useTranslation();
+  const curLocation = useLocation();
+
   const { nextChallengePath, prevChallengePath } = challengeMeta;
   const container = useRef<HTMLElement | null>(null);
 
@@ -256,6 +260,25 @@ const ShowQuiz = ({
     void navigate(blockHashSlug);
     closeExitQuizModal();
   };
+
+  usePageLeave({
+    depArr: [hasSubmitted, isPassed],
+    onWindowClose: event => {
+      event.preventDefault();
+      window.confirm(t('misc.navigation-warning'));
+    },
+    onHistoryChange: () => {
+      // If campers have submitted and not passed,
+      // there aren't any actions left other than leaving the quiz, so a prompt isn't needed.
+      if (hasSubmitted && !isPassed) {
+        return;
+      }
+
+      if (!window.confirm(t('misc.navigation-warning'))) {
+        void navigate(`${curLocation.pathname}`);
+      }
+    }
+  });
 
   return (
     <Hotkeys
