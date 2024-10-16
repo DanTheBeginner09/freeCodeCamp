@@ -1,4 +1,4 @@
-import { graphql } from 'gatsby';
+import { graphql, navigate } from 'gatsby';
 import React, { useEffect, useRef, useState } from 'react';
 import Helmet from 'react-helmet';
 import { ObserveKeys } from 'react-hotkeys';
@@ -7,6 +7,7 @@ import { connect } from 'react-redux';
 import { bindActionCreators } from 'redux';
 import type { Dispatch } from 'redux';
 import { createSelector } from 'reselect';
+import { useLocation } from '@reach/router';
 import { Container, Col, Row, Button, Quiz, useQuiz } from '@freecodecamp/ui';
 
 // Local Utilities
@@ -14,7 +15,6 @@ import { shuffleArray } from '../../../../../shared/utils/shuffle-array';
 import Spacer from '../../../components/helpers/spacer';
 import LearnLayout from '../../../components/layouts/learn';
 import { ChallengeNode, ChallengeMeta, Test } from '../../../redux/prop-types';
-// import { challengeTypes } from '../../../../../shared/config/challenge-types';
 import ChallengeDescription from '../components/challenge-description';
 import Hotkeys from '../components/hotkeys';
 import ChallengeTitle from '../components/challenge-title';
@@ -23,11 +23,15 @@ import {
   challengeMounted,
   updateChallengeMeta,
   openModal,
+  closeModal,
   updateSolutionFormValues,
   initTests
 } from '../redux/actions';
 import { isChallengeCompletedSelector } from '../redux/selectors';
 import PrismFormatted from '../components/prism-formatted';
+import { usePageLeave } from '../hooks';
+import ExitQuizModal from './exit-quiz-modal';
+import FinishQuizModal from './finish-quiz-modal';
 
 import './show.css';
 
@@ -45,7 +49,11 @@ const mapDispatchToProps = (dispatch: Dispatch) =>
       updateChallengeMeta,
       challengeMounted,
       updateSolutionFormValues,
-      openCompletionModal: () => openModal('completion')
+      openCompletionModal: () => openModal('completion'),
+      openExitQuizModal: () => openModal('exitQuiz'),
+      closeExitQuizModal: () => closeModal('exitQuiz'),
+      openFinishQuizModal: () => openModal('finishQuiz'),
+      closeFinishQuizModal: () => closeModal('finishQuiz')
     },
     dispatch
   );
@@ -63,6 +71,10 @@ interface ShowQuizProps {
   };
   updateChallengeMeta: (arg0: ChallengeMeta) => void;
   updateSolutionFormValues: () => void;
+  openExitQuizModal: () => void;
+  closeExitQuizModal: () => void;
+  openFinishQuizModal: () => void;
+  closeFinishQuizModal: () => void;
 }
 
 const ShowQuiz = ({
@@ -70,7 +82,7 @@ const ShowQuiz = ({
   data: {
     challengeNode: {
       challenge: {
-        fields: { tests },
+        fields: { tests, blockHashSlug },
         title,
         description,
         challengeType,
@@ -86,9 +98,15 @@ const ShowQuiz = ({
   initTests,
   updateChallengeMeta,
   openCompletionModal,
-  isChallengeCompleted
+  isChallengeCompleted,
+  openExitQuizModal,
+  closeExitQuizModal,
+  openFinishQuizModal,
+  closeFinishQuizModal
 }: ShowQuizProps) => {
   const { t } = useTranslation();
+  const curLocation = useLocation();
+
   const { nextChallengePath, prevChallengePath } = challengeMeta;
   const container = useRef<HTMLElement | null>(null);
 
@@ -98,6 +116,8 @@ const ShowQuiz = ({
 
   // `isPassed` is used as a flag to conditionally render the test or submit button.
   const [isPassed, setIsPassed] = useState(false);
+
+  const [message, setMessage] = useState<string>('');
 
   const blockNameTitle = `${t(
     `intro:${superBlock}.blocks.${block}.title`
@@ -136,11 +156,7 @@ const ShowQuiz = ({
     })
   );
 
-  const {
-    questions: quizData,
-    validateAnswers,
-    correctAnswerCount
-  } = useQuiz({
+  const { questions: quizData, validateAnswers } = useQuiz({
     initialQuestions: initialQuizData,
     validationMessages: {
       correct: t('learn.quiz.correct-answer'),
@@ -184,40 +200,89 @@ const ShowQuiz = ({
     updateChallengeMeta
   ]);
 
-  const handleAnswersCheck = () => {
-    validateAnswers();
-    setHasSubmitted(true);
-  };
-
-  const handleSubmitAndGo = () => {
-    openCompletionModal();
-  };
-
-  function getErrorMessage() {
-    if (!hasSubmitted) return '';
-
+  const handleFinishQuiz = () => {
     const unansweredList = quizData.reduce<number[]>(
       (acc, curr, id) => (curr.selectedAnswer == null ? [...acc, id + 1] : acc),
       []
     );
 
     if (unansweredList.length > 0) {
-      return t('learn.quiz.unanswered-questions', {
-        unansweredQuestions: unansweredList.join(', ')
-      });
+      setMessage(
+        t('learn.quiz.unanswered-questions', {
+          unansweredQuestions: unansweredList.join(', ')
+        })
+      );
+
+      return;
     }
 
-    return t('learn.quiz.have-n-correct-questions', {
-      correctAnswerCount,
-      total: quiz.length
-    });
-  }
+    setMessage('');
+    openFinishQuizModal();
+  };
 
-  const errorMessage = getErrorMessage();
+  const handleFinishQuizModalBtnClick = () => {
+    validateAnswers();
+    setHasSubmitted(true);
+
+    const correctCount = quizData.reduce(
+      (acc, curr) =>
+        curr.selectedAnswer === curr.correctAnswer ? (acc += 1) : acc,
+      0
+    );
+
+    // TODO: Update the message to include link(s) to the review materials
+    // in the case campers didn't pass the quiz.
+    setMessage(
+      t('learn.quiz.have-n-correct-questions', {
+        correctAnswerCount: correctCount,
+        total: quiz.length
+      })
+    );
+
+    closeFinishQuizModal();
+  };
+
+  const handleSubmitAndGo = () => {
+    openCompletionModal();
+  };
+
+  const handleExitQuiz = () => {
+    // If campers have submitted and not passed,
+    // there aren't any actions left other than leaving the quiz, so a prompt isn't needed.
+    if (hasSubmitted && !isPassed) {
+      void navigate(blockHashSlug);
+    } else {
+      openExitQuizModal();
+    }
+  };
+
+  const handleExitQuizModalBtnClick = () => {
+    void navigate(blockHashSlug);
+    closeExitQuizModal();
+  };
+
+  usePageLeave({
+    depArr: [hasSubmitted, isPassed],
+    onWindowClose: event => {
+      event.preventDefault();
+      window.confirm(t('misc.navigation-warning'));
+    },
+    onHistoryChange: () => {
+      // If campers have submitted and not passed,
+      // there aren't any actions left other than leaving the quiz, so a prompt isn't needed.
+      if (hasSubmitted && !isPassed) {
+        return;
+      }
+
+      if (!window.confirm(t('misc.navigation-warning'))) {
+        void navigate(`${curLocation.pathname}`);
+      }
+    }
+  });
 
   return (
     <Hotkeys
-      executeChallenge={!isPassed ? handleAnswersCheck : handleSubmitAndGo}
+      executeChallenge={!isPassed ? handleFinishQuiz : handleSubmitAndGo}
       containerRef={container}
       nextChallengePath={nextChallengePath}
       prevChallengePath={prevChallengePath}
@@ -243,27 +308,20 @@ const ShowQuiz = ({
               </ObserveKeys>
               <Spacer size='medium' />
               <div aria-live='polite' aria-atomic='true'>
-                {errorMessage}
+                {message}
               </div>
               <Spacer size='medium' />
-              {/*
-                 There are three cases for the button display:
-                 1. Campers submit the answers but don't pass
-                 2. Campers submit the answers and pass, click the submit button on the completion modal
-                 3. Campers submit the answers and pass, but they close the completion modal
-
-                 This rendering logic is only handling (2) and (3).
-                 TODO: Update the logic to handle (1).
-                 The code should render a link that points campers to the module's review block.
-               */}
               {!isPassed ? (
-                <Button
-                  block={true}
-                  variant='primary'
-                  onClick={handleAnswersCheck}
-                >
-                  {t('buttons.check-answer')}
-                </Button>
+                <>
+                  <Button
+                    block={true}
+                    variant='primary'
+                    onClick={handleFinishQuiz}
+                    disabled={hasSubmitted}
+                  >
+                    {t('buttons.finish-quiz')}
+                  </Button>
+                </>
               ) : (
                 <Button
                   block={true}
@@ -273,11 +331,17 @@ const ShowQuiz = ({
                   {t('buttons.submit-and-go')}
                 </Button>
               )}
+              <Spacer size='xxSmall' />
+              <Button block={true} variant='primary' onClick={handleExitQuiz}>
+                {t('buttons.exit-quiz')}
+              </Button>
               <Spacer size='large' />
             </Col>
             <CompletionModal />
           </Row>
         </Container>
+        <ExitQuizModal onExit={handleExitQuizModalBtnClick} />
+        <FinishQuizModal onFinish={handleFinishQuizModalBtnClick} />
       </LearnLayout>
     </Hotkeys>
   );
@@ -298,6 +362,7 @@ export const query = graphql`
         superBlock
         block
         fields {
+          blockHashSlug
           blockName
           slug
           tests {
