@@ -116,7 +116,6 @@ describe('dev login', () => {
         progressTimestamps: [expect.any(Number)],
         savedChallenges: [],
         sendQuincyEmail: false,
-        theme: 'default',
         timezone: null,
         twitter: null,
         // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

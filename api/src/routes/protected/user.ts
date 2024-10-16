@@ -487,7 +487,6 @@ export const userGetRoutes: FastifyPluginCallbackTypebox = (
             progressTimestamps: true,
             savedChallenges: true,
             sendQuincyEmail: true,
-            theme: true,
             twitter: true,
             username: true,
             usernameDisplay: true,
@@ -535,7 +534,6 @@ export const userGetRoutes: FastifyPluginCallbackTypebox = (
           currentChallengeId,
           location,
           name,
-          theme,
           ...publicUser
         } = rest;
 
@@ -561,7 +559,6 @@ export const userGetRoutes: FastifyPluginCallbackTypebox = (
               joinDate: new ObjectId(user.id).getTimestamp().toISOString(),
               location: location ?? '',
               name: name ?? '',
-              theme: theme ?? 'default',
               twitter: normalizeTwitter(twitter),
               username: usernameDisplay || username,
               userToken: encodedToken,

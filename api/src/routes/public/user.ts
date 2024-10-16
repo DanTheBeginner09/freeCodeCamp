@@ -139,7 +139,6 @@ export const userPublicGetRoutes: FastifyPluginCallbackTypebox = (
         'email',
         'emailVerified',
         'sendQuincyEmail',
-        'theme',
         // keyboardShortcuts is included in flags.
         // 'keyboardShortcuts',
         'acceptedPrivacyTerms',
