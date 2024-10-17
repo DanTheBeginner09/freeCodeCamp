@@ -348,10 +348,6 @@
     "timezone": {
       "type": "string"
     },
-    "theme": {
-      "type": "string",
-      "default": "default"
-    },
     "keyboardShortcuts": {
       "type": "boolean",
       "default": false

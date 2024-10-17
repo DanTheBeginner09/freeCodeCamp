@@ -90,7 +90,6 @@ export const getSessionUser = {
           ),
           profileUI: Type.Optional(profileUI),
           sendQuincyEmail: Type.Boolean(),
-          theme: Type.String(),
           twitter: Type.Optional(Type.String()),
           website: Type.Optional(Type.String()),
           yearsTopContributor: Type.Array(Type.String()), // TODO(Post-MVP): convert to number?

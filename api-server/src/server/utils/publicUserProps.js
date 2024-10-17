@@ -51,7 +51,6 @@ export const userPropsForSession = [
   'emailVerified',
   'id',
   'sendQuincyEmail',
-  'theme',
   'keyboardShortcuts',
   'completedChallengeCount',
   'acceptedPrivacyTerms'

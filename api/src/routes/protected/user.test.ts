@@ -151,7 +151,6 @@ const sessionOnlyData = {
   emailVerified: testUserData.emailVerified,
   isEmailVerified: testUserData.emailVerified,
   sendQuincyEmail: testUserData.sendQuincyEmail,
-  theme: testUserData.theme,
   keyboardShortcuts: testUserData.keyboardShortcuts,
   completedChallengeCount: 3,
   acceptedPrivacyTerms: testUserData.acceptedPrivacyTerms
@@ -715,8 +714,7 @@ describe('userRoutes', () => {
           isSciCompPyCertV7: false,
           keyboardShortcuts: false,
           location: '',
-          name: '',
-          theme: 'default'
+          name: ''
         };
 
         const response = await superRequest('/user/get-session-user', {
